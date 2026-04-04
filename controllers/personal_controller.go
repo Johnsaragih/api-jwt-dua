@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"api-jwt/configs"
+	"api-jwt/middleware"
 	"api-jwt/models"
 	"net/http"
 
@@ -50,9 +51,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PersonalHandler(w http.ResponseWriter, r *http.Request) {
+	// Ambil data user dari JWT
+	claims := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
+	pid := claims["pid"].(string)
+	namaUser := claims["nama"].(string)
 	switch r.Method {
 	case http.MethodGet:
-		rows, _ := configs.DB.Query("SELECT nama FROM personal")
+		rows, err := configs.DB.Query("SELECT nama FROM personal")
+		if err != nil {
+			http.Error(w, "DB Error", http.StatusInternalServerError)
+			return
+		}
 		defer rows.Close()
 		var list []string
 		for rows.Next() {
@@ -60,15 +69,35 @@ func PersonalHandler(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&n)
 			list = append(list, n)
 		}
-		JSONResponse(w, 200, "Success", list)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"user":     namaUser,
+			"user_pid": pid,
+			"personal": list,
+			"message":  "Success",
+		})
+	//	JSONResponse(w, 200, "Success ", list)
 
 	case http.MethodPost:
 		var p models.Personal
-		json.NewDecoder(r.Body).Decode(&p)
-		configs.DB.Exec("INSERT INTO personal(pid,nama,password)VALUES(?,?,?)", p.PID, p.Nama, p.Password)
-		JSONResponse(w, 201, "Berhasil Insert", nil)
+		err := json.NewDecoder(r.Body).Decode(&p)
+		if err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		_, err = configs.DB.Exec("INSERT INTO personal(pid,nama,password)VALUES(?,?,?)", p.PID, p.Nama, p.Password)
+		if err != nil {
+			http.Error(w, "DB Insert Error", http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"user ":    namaUser,
+			"user_pid": pid,
+			"message":  "Berhasil Insert",
+		})
+
 	default:
-		JSONResponse(w, 405, "Method Not allowed", nil)
+		//JSONResponse(w, 405, "Method Not allowed", nil)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 
 }
