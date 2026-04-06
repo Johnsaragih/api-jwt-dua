@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"api-jwt/configs"
+	"api-jwt-dua/configs"
+	"api-jwt-dua/utils"
 	"context"
 	"net/http"
 	"strings"
@@ -17,7 +18,8 @@ func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Unauthorized - No Token", http.StatusUnauthorized)
+			utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized", "", "")
+			//		http.Error(w, "Unauthorized - No Token", http.StatusUnauthorized)
 			return
 		}
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
@@ -25,12 +27,14 @@ func JWTMiddleware(next http.Handler) http.Handler {
 			return []byte(configs.AppConfig.JWT.Secret), nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, "Unauthorized - Invalid Token", http.StatusUnauthorized)
+			utils.JSONResponse(w, http.StatusUnauthorized, "Token Expired", "", tokenString)
+			//http.Error(w, "Unauthorized - Invalid Token", http.StatusUnauthorized)
 			return
 		}
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, "Unauthorized Invalid Claims", http.StatusUnauthorized)
+			utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized Invalid Claims", "", tokenString)
+			//http.Error(w, "Unauthorized Invalid Claims", http.StatusUnauthorized)
 			return
 		}
 		//simpan ke contex biiar bisa dipakai di handler

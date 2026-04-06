@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"api-jwt/configs"
-	"api-jwt/routes"
+	"api-jwt-dua/configs"
+	"api-jwt-dua/routes"
 	"net/http"
 )
 

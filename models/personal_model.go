@@ -5,4 +5,5 @@ type Personal struct {
 	Nama     string `json:"nama"`
 	Password string `json:"password"`
 	Bagian   string `json:"bagian"`
+	Pass     string `json:"pswd"`
 }

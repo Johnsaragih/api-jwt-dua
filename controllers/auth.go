@@ -2,11 +2,12 @@ package controllers
 
 import (
 	"encoding/json"
+
 	"time"
 
-	"api-jwt/configs"
-	"api-jwt/middleware"
-	"api-jwt/models"
+	"api-jwt-dua/configs"
+	"api-jwt-dua/models"
+	"api-jwt-dua/utils"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,25 +15,31 @@ import (
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		JSONResponse(w, 405, "Method Tidak Di Izinkan", nil)
+		utils.JSONResponse(w, 405, "Method Tidak Di Izinkan", nil, "")
 		return
 	}
 	var input models.Personal
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
-		JSONResponse(w, 400, "Invalid JSON", nil)
+		utils.JSONResponse(w, 400, "Invalid JSON", nil, "")
 		return
 	}
 
+	//ambil user tanpa cek pswd
 	var p models.Personal
 
-	sql_cmd := "SELECT pid,nama FROM personal WHERE pid = ? AND password = ? "
-	err = configs.DB.QueryRow(sql_cmd,
-		input.PID, input.Password).Scan(&p.PID, &p.Nama)
-	if err != nil {
-		JSONResponse(w, 401, "Login Gagal..!", nil)
+	sql_cmd := "SELECT pid,pswd,nama FROM personal WHERE pid = ? "
+
+	if err := configs.DB.QueryRow(sql_cmd, input.PID).Scan(&p.PID, &p.Pass, &p.Nama); err != nil {
+		utils.JSONResponse(w, 401, "PID Tidak Di Temukan...!", nil, "")
 		return
 	}
+	//Bandingkan hash
+	if !utils.CheckHash(input.Pass, p.Pass) {
+		utils.JSONResponse(w, 401, "Password Salah..!", nil, "")
+		return
+	}
+
 	// JWT di sini
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"pid":  p.PID,
@@ -41,15 +48,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	tokenString, err := token.SignedString([]byte(configs.AppConfig.JWT.Secret))
 	if err != nil {
-		JSONResponse(w, 500, "Gagal Membuat Token", nil)
+		utils.JSONResponse(w, 500, "Gagal Membuat Token", nil, "")
 		return
 	}
-	JSONResponse(w, 200, "Login Sukses", map[string]interface{}{
-		"nama":  p.Nama,
-		"token": tokenString,
-	})
+	utils.JSONResponse(w, 200, "Login Sukses", map[string]interface{}{
+		"nama": p.Nama,
+	},
+		tokenString)
 }
 
+/*
+pindah ke personal.go
 func PersonalHandler(w http.ResponseWriter, r *http.Request) {
 	// Ambil data user dari JWT
 	claims := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
@@ -96,8 +105,11 @@ func PersonalHandler(w http.ResponseWriter, r *http.Request) {
 		})
 
 	default:
-		//JSONResponse(w, 405, "Method Not allowed", nil)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		//405
+		utils.JSONResponse(w, http.StatusMethodNotAllowed, "Method Not Allowed", map[string]interface{}{
+			"pid": pid, "nama": namaUser,
+		}, "")
 	}
 
 }
+*/
