@@ -1,5 +1,6 @@
 # Env
 .env
+.notes
 
 # Binary
 *.exe

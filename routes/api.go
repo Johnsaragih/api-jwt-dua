@@ -8,13 +8,11 @@ import (
 
 func MapRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/login", controllers.LoginHandler)
-	//protected routes group
+	//protected route groups
 	api := http.NewServeMux()
-	api.Handle("/personal", http.HandlerFunc(controllers.GetPersonal))
-	//	mux.Handle("/personal", middleware.JWTMiddleware(http.HandlerFunc(controllers.PersonalHandler)))
+	api.Handle("/personal", middleware.AllowMethods(http.MethodGet)(controllers.GetPersonal))
+	api.Handle("/barang/", middleware.AllowMethods(http.MethodGet)(controllers.GetBarang))
+	api.Handle("/barang", middleware.AllowMethods(http.MethodGet)(controllers.GetAllBarang))
 	// Pasang JWT
 	mux.Handle("/api/", http.StripPrefix("/api", middleware.JWTMiddleware(api)))
 }
-
-//HandleFunc → gunakan untuk fungsi biasa (w,r)
-//Handle → gunakan untuk interface http.Handler (misal middleware)

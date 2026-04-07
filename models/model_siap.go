@@ -7,3 +7,10 @@ type Personal struct {
 	Bagian   string `json:"bagian"`
 	Pass     string `json:"pswd"`
 }
+
+type Barang struct {
+	ID         string  `json:"id"`
+	Namabarang string  `json:"namabarang"`
+	Nobarcode  string  `json:"nobarcode"`
+	Urlgbr     *string `json:"url_gbr"`
+}
