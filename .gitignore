@@ -10,6 +10,9 @@
 # Logs
 *.log
 
+#Fonts
+*.ttf
+
 # OS
 .DS_Store
 Thumbs.db
@@ -21,3 +24,5 @@ Thumbs.db
 # Go vendor (optional)
 vendor/
 testing/
+uploads/
+assets/

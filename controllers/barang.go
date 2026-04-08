@@ -5,9 +5,11 @@ import (
 	"api-jwt-dua/middleware"
 	"api-jwt-dua/models"
 	"api-jwt-dua/utils"
+	"database/sql"
+	"encoding/json"
 	"net/http"
-	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -17,24 +19,51 @@ import (
 // 	Urlgbr     string `json:"urlgbr"`
 // }
 
+//Single
+
+func GetBarangID(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
+	if !ok {
+		utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized", claims, "")
+		return
+	}
+	barkod := chi.URLParam(r, "barkod")
+	if barkod == "" {
+		utils.JSONResponse(w, http.StatusBadRequest, "No barcode Required ", barkod, "")
+		return
+	}
+	var barang models.Barang
+
+	sql_query := `SELECT id,namabarang,nobarcode
+					FROM barang WHERE nobarcode=? `
+
+	err := configs.DB.QueryRow(sql_query, barkod).Scan(&barang.ID, &barang.Namabarang, &barang.Nobarcode)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.JSONResponse(w, http.StatusOK, "No Data", err, "")
+			return
+		}
+		utils.JSONResponse(w, http.StatusInternalServerError, "DB Error", err, "")
+		return
+	}
+	utils.JSONResponse(w, http.StatusOK, "Berhasil", barang, "")
+}
+
+// List
 func GetBarang(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
 	if !ok {
 		utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized", claims, "")
 		return
 	}
-	//api/barang/688
-	path := r.URL.Path
-	parts := strings.Split(path, "/") // ["","api","barang","688"] =>4
-
-	if len(parts) != 3 {
-		utils.JSONResponse(w, http.StatusBadRequest, "Invalid Path", "", "")
+	barkod := chi.URLParam(r, "barkod")
+	sql_query := `SELECT id,namabarang,nobarcode
+					FROM barang WHERE nobarcode LIKE ? `
+	if barkod == "" {
+		utils.JSONResponse(w, http.StatusBadRequest, "No barcode Required ", barkod, "")
 		return
 	}
-	barkod := parts[3]
-	sql_query := `SELECT id,barang,nobarcode
-					FROM barang WHERE nobarcode LIKE ? `
-
 	rows, err := configs.DB.Query(sql_query, "%"+barkod+"%")
 	if err != nil {
 		utils.JSONResponse(w, http.StatusInternalServerError, "DB Error", err, "")
@@ -62,6 +91,8 @@ func GetBarang(w http.ResponseWriter, r *http.Request) {
 	utils.JSONResponse(w, http.StatusOK, "Berhasil", list, "")
 
 }
+
+// List
 func GetAllBarang(w http.ResponseWriter, r *http.Request) {
 	claims, ok := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
 	if !ok {
@@ -94,4 +125,41 @@ func GetAllBarang(w http.ResponseWriter, r *http.Request) {
 	}
 	//Ada Data
 	utils.JSONResponse(w, http.StatusOK, "Berhasil", list, "")
+}
+
+func NewBarang(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
+	if !ok {
+		utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized", claims, "")
+		return
+	}
+	var input models.Barang
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		utils.JSONResponse(w, http.StatusBadRequest, "NewBarang Invalid Request Body.. ", err, "")
+		return
+	}
+	if input.Namabarang == "" || input.Nobarcode == "" {
+		utils.JSONResponse(w, http.StatusBadRequest, "NewBarang Reqired Fileds... ", err, "")
+		return
+	}
+	fileName := input.Nobarcode + ".jpg"
+	if input.Image != "" {
+		err := utils.SaveResizeBase64ToFile(input.Image, fileName)
+		if err != nil {
+			utils.JSONResponse(w, http.StatusInternalServerError, "NewBarang Upload Error... ", err.Error(), "")
+			return
+		}
+		input.Urlgbr = &fileName
+	}
+
+	sql_cmd := `INSERT INTO barang(namabarang,nobarcode,url_gbr)
+		VALUES(?,?,?)`
+	result, err := configs.DB.Exec(sql_cmd, input.Namabarang, input.Nobarcode, input.Urlgbr)
+	if err != nil {
+		utils.JSONResponse(w, http.StatusInternalServerError, "NewBarang Insert Error... ", err, "")
+		return
+	}
+	utils.JSONResponse(w, http.StatusOK, "NewBarang Insert Success... ", result, "")
+
 }

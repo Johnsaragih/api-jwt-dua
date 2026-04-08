@@ -13,4 +13,5 @@ type Barang struct {
 	Namabarang string  `json:"namabarang"`
 	Nobarcode  string  `json:"nobarcode"`
 	Urlgbr     *string `json:"url_gbr"`
+	Image      string  `json:"image"`
 }
