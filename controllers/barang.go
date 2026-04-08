@@ -160,6 +160,42 @@ func NewBarang(w http.ResponseWriter, r *http.Request) {
 		utils.JSONResponse(w, http.StatusInternalServerError, "NewBarang Insert Error... ", err, "")
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, "NewBarang Insert Success... ", result, "")
+	utils.JSONResponse(w, http.StatusOK, "NewBarang Insert Success... ", result.LastInsertId, "")
+
+}
+
+func UpdateBarang(w http.ResponseWriter, r *http.Request) {
+	claims, ok := r.Context().Value(middleware.UserKey).(jwt.MapClaims)
+	if !ok {
+		utils.JSONResponse(w, http.StatusUnauthorized, "Unauthorized", claims, "")
+		return
+	}
+	barkod := chi.URLParam(r, "barkod")
+
+	if barkod == "" {
+		utils.JSONResponse(w, http.StatusBadRequest, "Updatebarang Required No barcode", barkod, "")
+		return
+	}
+
+	var update models.Barang
+
+	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		utils.JSONResponse(w, http.StatusBadRequest, "Updatebarang Invalid Required Body", update.Namabarang, "")
+		return
+	}
+	var existingBarang models.Barang
+	//Cek Ada Barang
+	if err := configs.DB.QueryRow("SELECT nobarcode FROM barang WHERE nobarcode=?", barkod).Scan(&existingBarang.Nobarcode).Error; err != nil {
+		utils.JSONResponse(w, http.StatusInternalServerError, "Updatebarang Error", barkod, "")
+		return
+	}
+
+	result, err := configs.DB.Exec("UPDATE barang SET namabarang=? WHERE nobarcode=?", update.Namabarang, barkod)
+	if err != nil {
+		utils.JSONResponse(w, http.StatusInternalServerError, "UpdateBarang Update Error... ", err, "")
+		return
+	}
+	utils.JSONResponse(w, http.StatusInternalServerError, "UpdateBarang Success... ", result.RowsAffected, "")
 
 }

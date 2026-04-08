@@ -17,6 +17,7 @@ func MapRoutes(r chi.Router) {
 		api.Get("/barang/{barkod}", controllers.GetBarang)     //nobarcode LIKE 009
 		api.Get("/barang", controllers.GetAllBarang)
 		api.Post("/newbarang", controllers.NewBarang)
+		api.Put("/barang/{barkod}", controllers.UpdateBarang)
 	})
 
 }
