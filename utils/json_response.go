@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -24,7 +25,9 @@ func JSONResponse(w http.ResponseWriter, status int, message string, data interf
 		Data:    data,
 		Token:   token,
 	}
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("JSON encode Error :", err)
+	}
 }
 
 /*

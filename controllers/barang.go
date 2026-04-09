@@ -160,7 +160,8 @@ func NewBarang(w http.ResponseWriter, r *http.Request) {
 		utils.JSONResponse(w, http.StatusInternalServerError, "NewBarang Insert Error... ", err, "")
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, "NewBarang Insert Success... ", result.LastInsertId, "")
+	res, _ := result.RowsAffected()
+	utils.JSONResponse(w, http.StatusOK, "NewBarang Insert Success... ", res, "")
 
 }
 
@@ -178,24 +179,28 @@ func UpdateBarang(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var update models.Barang
-
-	err := json.NewDecoder(r.Body).Decode(&update)
-	if err != nil {
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		utils.JSONResponse(w, http.StatusBadRequest, "Updatebarang Invalid Required Body", update.Namabarang, "")
 		return
 	}
 	var existingBarang models.Barang
 	//Cek Ada Barang
-	if err := configs.DB.QueryRow("SELECT nobarcode FROM barang WHERE nobarcode=?", barkod).Scan(&existingBarang.Nobarcode).Error; err != nil {
-		utils.JSONResponse(w, http.StatusInternalServerError, "Updatebarang Error", barkod, "")
+	err := configs.DB.QueryRow("SELECT nobarcode FROM barang WHERE nobarcode=?", barkod).Scan(&existingBarang.Nobarcode)
+	if err == sql.ErrNoRows {
+		utils.JSONResponse(w, http.StatusNotFound, "Updatebarang No Data Error", barkod, "")
+		return
+	} else if err != nil {
+		utils.JSONResponse(w, http.StatusInternalServerError, "Updatebarang Query Error", barkod, "")
 		return
 	}
-
+	// update
 	result, err := configs.DB.Exec("UPDATE barang SET namabarang=? WHERE nobarcode=?", update.Namabarang, barkod)
 	if err != nil {
-		utils.JSONResponse(w, http.StatusInternalServerError, "UpdateBarang Update Error... ", err, "")
+		utils.JSONResponse(w, http.StatusInternalServerError, "UpdateBarang Update Failed... ", err.Error(), "")
 		return
 	}
-	utils.JSONResponse(w, http.StatusInternalServerError, "UpdateBarang Success... ", result.RowsAffected, "")
+	rows, _ := result.RowsAffected()
+	utils.JSONResponse(w, http.StatusOK, "UpdateBarang Success... ", rows, "")
 
 }

@@ -12,6 +12,7 @@ func MapRoutes(r chi.Router) {
 	r.Post("/login", controllers.LoginHandler)
 	//protected
 	r.Route("/api", func(api chi.Router) {
+		api.Use(middleware.RecoverMiddleware)
 		api.Use(middleware.JWTMiddleware)
 		api.Get("/idbarang/{barkod}", controllers.GetBarangID) //nobarcode=65567675
 		api.Get("/barang/{barkod}", controllers.GetBarang)     //nobarcode LIKE 009
